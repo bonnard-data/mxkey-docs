@@ -6,13 +6,26 @@ description: Install the mxkey CLI on macOS, plus the optional bundled agent ski
 mxkey is **macOS only**. It wraps `/usr/bin/security`, which only exists on
 macOS, so Linux and Windows aren't supported.
 
-## Homebrew (recommended, when available)
+## Homebrew (recommended)
 
 ```bash
+brew install bonnard-data/mxkey/mxkey
+```
+
+The single-line form combines `brew tap` and `brew install`. Future updates
+land via `brew upgrade mxkey`. Or the two-step:
+
+```bash
+brew tap bonnard-data/mxkey
 brew install mxkey
 ```
 
-The Homebrew tap is in the works for v1.0.0. Until then, use the manual install below.
+The bundled agent skill is installed at `$(brew --prefix)/share/mxkey`.
+Symlink it into your editor to enable:
+
+```bash
+ln -sfn "$(brew --prefix)/share/mxkey" ~/.claude/skills/mxkey
+```
 
 ## Manual
 
