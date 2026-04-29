@@ -1,0 +1,40 @@
+---
+title: rm
+description: Delete a secret from Keychain. Idempotent — safe to re-run.
+---
+
+```text
+mxkey rm [-f|--force] <name>
+mxkey delete [-f|--force] <name>     # alias
+```
+
+Deletes the Keychain entry **and** removes the index mapping. Both are no-ops
+if the entry isn't there, so re-running is safe.
+
+## Example
+
+```bash
+mxkey rm api.openai
+# Remove mxkey.api.openai (OPENAI_API_KEY)? [y/N] y
+# removed mxkey.api.openai
+```
+
+## Flags
+
+| | |
+| --- | --- |
+| `-f`, `--force` | Skip the confirmation prompt. |
+
+Non-TTY stdin (piped) also skips the prompt — there's no way to answer in
+script context.
+
+## Important — the key is still valid at the provider
+
+`mxkey rm` only removes the local copy. The actual API key, token, or
+credential is **still valid** at OpenAI / Stripe / your DB / wherever it
+came from. To revoke for real, also rotate or revoke at the provider.
+
+## See also
+
+- [`backup rm`](/docs/backup#rm) — delete every backup code for a service
+- [Rotating a secret](/docs/skill#rotating)

@@ -1,0 +1,61 @@
+---
+title: Quickstart
+description: Save a secret, run a command with it, repeat. Three commands.
+---
+
+## 1. Save a secret
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+```
+
+You'll be prompted at a hidden terminal read for the value. Type it; press Enter.
+The value goes straight into the macOS Keychain. It's never echoed, written to
+disk, or stored in shell history.
+
+## 2. Use the secret in any command
+
+```bash
+mxkey run api.openai -- curl https://api.openai.com/v1/models
+```
+
+mxkey reads the value from Keychain, exposes it as `$OPENAI_API_KEY` to the
+child process, and `exec`s the command. The value lives only in that
+process's environment.
+
+## 3. Migrate an existing `.env`
+
+```bash
+cd ~/projects/myapp
+mxkey migrate .env.local myapp
+```
+
+Every key in `.env.local` becomes a Keychain entry under `project.myapp.*`,
+and a `.env.mxkey` manifest is written so `mxkey run-here` can load all of
+them with one command.
+
+## 4. Run a project's full env
+
+```bash
+mxkey run-here -- pnpm dev
+```
+
+Walks up to find the nearest `.env.mxkey`, loads every listed secret, runs
+`pnpm dev` with all of them in the env.
+
+## 5. Inspect what you've stored
+
+```bash
+mxkey list
+mxkey list project.myapp           # filter by group
+```
+
+Names only. Values stay in Keychain.
+
+## What's next
+
+- [Save & run](/docs/set) for the full set/run/list cycle
+- [Project workflow](/docs/init) for the manifest-based group flow
+- [Backup codes](/docs/backup) for 2FA recovery codes (single-use)
+- [`--require-auth`](/docs/security#touch-id) for Touch ID on every read
+- [Agent skill](/docs/skill) for the Claude / Cursor / Codex integration

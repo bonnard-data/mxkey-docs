@@ -1,0 +1,96 @@
+---
+title: backup
+description: Single-use 2FA recovery codes — atomic read-and-delete, never re-used.
+---
+
+```text
+mxkey backup add [--show] <service>
+mxkey backup use <service>
+mxkey backup list [service]
+mxkey backup rm [-f|--force] <service>
+```
+
+A specialised flow for 2FA recovery codes. Each code is stored as
+`backup.<service>.<n>` and consumed atomically — the code is deleted at the
+moment it's read, so you can never accidentally re-use a burned one.
+
+Backup codes always require Touch ID / macOS authentication on every read
+(no opt-out — recovery codes are too high-stakes to be silent).
+
+## `add`
+
+Paste codes one per line at a hidden prompt. Blank line to finish.
+
+```bash
+mxkey backup add github
+# Paste backup codes for github, one per line.
+# Input is hidden. Press Enter on a blank line to finish. (--show to echo)
+# code 1 (blank to finish): ********
+# code 2 (blank to finish): ********
+# ...
+# stored 8 backup code(s) for github (require-auth)
+```
+
+### `--show`
+
+Echoes input as you paste. Useful if you want to verify what you pasted.
+**Warning:** visible input lands in terminal scrollback and tmux/screen
+buffers — open a fresh window or run `clear` afterwards.
+
+## `use`
+
+Atomic single-use consumption. Prints **and** deletes the next available
+code in one operation:
+
+```bash
+mxkey backup use github
+# (Touch ID prompt)
+# abc1-2def-3ghi
+# consumed backup.github.1; 7 code(s) remaining
+```
+
+If the delete fails for any reason, the value is **not printed** —
+fail-closed, so you can never accidentally print a code that's still stored.
+
+> **Don't use `mxkey get` on a backup code.** That doesn't delete it,
+> and you'll re-use a burned code on your next call. Always `backup use`.
+
+## `list`
+
+```bash
+mxkey backup list
+# SERVICE               REMAINING
+# --------------------  ---------
+# github                7
+# google                10
+# porkbun               6
+
+mxkey backup list github
+# github                7 remaining
+```
+
+No values are ever printed.
+
+## `rm`
+
+```bash
+mxkey backup rm github
+# Remove 7 backup code(s) for github? [y/N] y
+# removed 7 backup code(s) for github
+# remember to revoke / regenerate at the provider if these were live
+```
+
+Pass `-f` to skip the confirmation. The provider still considers any
+unused codes valid until you regenerate them there.
+
+## When to regenerate at the provider
+
+Most 2FA providers issue 8–10 codes at a time. When `mxkey backup list`
+shows a service running low (1–2 remaining), regenerate the set at the
+provider, then `mxkey backup rm <service>` and `mxkey backup add <service>`
+the new ones.
+
+## See also
+
+- [`set --require-auth`](/docs/security#touch-id) — Touch ID for non-backup secrets
+- [Skill: storing recovery codes](/docs/playbooks#backup-codes)

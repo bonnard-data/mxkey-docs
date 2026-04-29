@@ -1,0 +1,68 @@
+---
+title: set
+description: Save (or update) a secret in macOS Keychain at a hidden terminal prompt.
+---
+
+```text
+mxkey set [--require-auth] <name> <ENV_VAR>
+```
+
+Prompts for the value at a hidden terminal read, then stores it in the
+macOS Keychain under the service `mxkey.<name>` with the env-var name as
+the account.
+
+## Example
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+# Value for mxkey.api.openai (input hidden):
+# set mxkey.api.openai (OPENAI_API_KEY)
+```
+
+## Arguments
+
+| | |
+| --- | --- |
+| `<name>` | The mxkey name. Convention: `<category>.<thing>`. See [Naming](/docs/naming). |
+| `<ENV_VAR>` | The environment variable to expose this secret as when used in `mxkey run`. By convention uppercase. |
+
+## Flags
+
+### `--require-auth`
+
+```bash
+mxkey set --require-auth db.prod-postgres DATABASE_URL
+```
+
+Saves the secret with a Keychain ACL that requires macOS authentication on
+**every read**. On Macs with Touch ID, the prompt accepts a single tap. Use
+this for production DBs, billing keys, anything where silent theft would hurt.
+
+Without `--require-auth`, the Keychain entry is created with the
+`-T /usr/bin/security` flag — meaning the `security` CLI is pre-authorised
+and reads are silent.
+
+## How values are read
+
+| stdin | Behaviour |
+| --- | --- |
+| TTY (interactive) | Hidden prompt: `IFS= read -rs value` |
+| Pipe (non-TTY) | Reads the entire stdin via `cat` (handles multiline values like PEM keys) |
+
+Piped form, e.g. for migrations:
+
+```bash
+printf '%s' "$value" | mxkey set api.foo FOO_API_KEY
+```
+
+## Overwriting
+
+`mxkey set` overwrites an existing entry silently — there's no confirmation
+prompt. To rotate a secret: re-run `mxkey set` with the same name and type
+the new value.
+
+## See also
+
+- [`run`](/docs/run) — use the saved secret in a command
+- [`list`](/docs/list) — see what's stored
+- [`rm`](/docs/rm) — delete an entry

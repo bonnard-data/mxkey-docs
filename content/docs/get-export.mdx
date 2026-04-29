@@ -1,0 +1,62 @@
+---
+title: get & export
+description: Print a secret value to stdout. Escape hatches — prefer `run`.
+---
+
+```text
+mxkey get <name>            # prints "value"
+mxkey export <name>         # prints "ENV_VAR=value"
+```
+
+Both print the secret value to stdout. Use sparingly — prefer
+[`mxkey run`](/docs/run), which never lets the value touch your shell.
+
+## When to use them
+
+The legitimate use case is tools that **can't read environment variables
+from a parent process** and insist on parsing a file or shell-sourcing.
+For example, regenerating an `.env` on demand:
+
+```bash
+# ~/projects/myapp/scripts/gen-env.sh
+for name in stripe_secret_key database_url openai_api_key; do
+  mxkey export "project.myapp.$name"
+done > .env.local
+```
+
+Then `.env.local` is gitignored and regenerated per dev session.
+
+## When NOT to use them
+
+```bash
+# DON'T do this
+export OPENAI_API_KEY=$(mxkey get api.openai)
+```
+
+That puts the value in your shell's environment **and** in shell history
+(via the command line). Use `mxkey run` instead:
+
+```bash
+mxkey run api.openai -- curl https://api.openai.com/v1/models
+```
+
+## Differences
+
+| | `get` | `export` |
+| --- | --- | --- |
+| Output | `<value>` | `<ENV_VAR>=<value>` |
+| Use case | Manual one-off, piping to clipboard, etc. | Bulk regeneration of `.env` files |
+| Shell-source friendly | No | Yes (`source <(mxkey export api.foo)`) — though again, prefer `run`. |
+
+## Hard rules
+
+- Never use `get` on a [backup code](/docs/backup) — that doesn't consume
+  it, and you'll burn it twice.
+- Never paste the output of `get` into chat or commit it.
+- Treat `get` like `cat private.key`: it briefly exposes the value to
+  whatever scrollback / terminal-multiplexer is recording.
+
+## See also
+
+- [`run`](/docs/run) — the right way to use a secret
+- [Hard rules](/docs/hard-rules)

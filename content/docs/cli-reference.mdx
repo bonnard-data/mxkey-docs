@@ -1,0 +1,49 @@
+---
+title: CLI reference
+description: Every subcommand at a glance. Each has its own page.
+---
+
+```text
+mxkey set [--require-auth] <name> <ENV_VAR>
+mxkey run <name>... -- <command>
+mxkey list [prefix]
+mxkey rm [-f|--force] <name>
+mxkey init <group-prefix>
+mxkey run-here -- <command>
+mxkey migrate [--delete|--keep] [--no-init] <path-to-.env> [project-slug]
+mxkey backup add [--show] <service>
+mxkey backup use <service>
+mxkey backup list [service]
+mxkey backup rm <service>
+mxkey get <name>
+mxkey export <name>
+mxkey --help | -h
+mxkey --version | -v
+```
+
+| Command | Purpose |
+| --- | --- |
+| [`set`](/docs/set) | Save a secret to Keychain at a hidden prompt |
+| [`run`](/docs/run) | Run any command with named secrets injected as env vars |
+| [`list`](/docs/list) | Show stored secret names (values never printed) |
+| [`rm`](/docs/rm) | Delete a secret from Keychain |
+| [`init`](/docs/init) | Write a `.env.mxkey` manifest for a project group |
+| [`run-here`](/docs/run-here) | Walk up to the nearest manifest and run a command with its secrets loaded |
+| [`migrate`](/docs/migrate) | Move an existing `.env` file into Keychain |
+| [`backup add`](/docs/backup) | Store 2FA recovery codes one per line |
+| [`backup use`](/docs/backup#use) | Atomic read-and-delete of the next code |
+| [`backup list`](/docs/backup#list) | Count remaining codes per service |
+| [`backup rm`](/docs/backup#rm) | Delete every code for a service |
+| [`get`](/docs/get-export) | Print a secret value (escape hatch — prefer `run`) |
+| [`export`](/docs/get-export) | Print `ENV_VAR=value` for shell sourcing |
+
+## Naming convention
+
+`<category>.<name>`. Conventional categories: `api`, `db`, `oauth`,
+`project`, `infra`, `backup`. See [Naming](/docs/naming).
+
+## Storage
+
+Each secret is a macOS Keychain "generic password" entry with a `mxkey.*`
+service prefix. An on-disk index at `~/.config/mxkey/index` tracks the
+`name → ENV_VAR` mapping (no values). See [Keychain deep-dive](/docs/keychain-deep-dive).

@@ -1,0 +1,65 @@
+---
+title: Naming convention
+description: <category>.<name> — a flat namespace with conventional category prefixes.
+---
+
+mxkey names are **flat strings** — there's no actual hierarchy in storage.
+The dot in `api.openai` is just convention.
+
+## Format
+
+```text
+<category>.<name>
+```
+
+Categories are convention only — not enforced. Pick from:
+
+| Category | For |
+| --- | --- |
+| `api` | Third-party API keys (`api.openai`, `api.stripe`) |
+| `db` | Database credentials (`db.prod-postgres`, `db.staging-redis`) |
+| `oauth` | OAuth client IDs / secrets / refresh tokens (`oauth.google`) |
+| `project` | Project-scoped secrets (`project.myapp.stripe`, `project.dashboard.posthog_key`) |
+| `infra` | Infra credentials (`infra.aws-deploy`, `infra.cloudflare-zone`) |
+| `backup` | Single-use 2FA recovery codes (`backup.github.1`). Managed via [`mxkey backup`](/docs/backup), not `mxkey set` directly. |
+
+## Project namespaces
+
+For per-project secrets, use `project.<slug>.<key>`:
+
+```bash
+project.myapp.stripe_secret_key
+project.myapp.database_url
+project.myapp.openai_api_key
+```
+
+The `project.<slug>` prefix becomes a **group** — see [Project groups](/docs/groups).
+
+## Env-var name
+
+The second arg to `mxkey set` is the **environment variable** the secret will
+be exposed as when used in `mxkey run`. By convention, uppercase:
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+mxkey set project.myapp.stripe_secret_key STRIPE_SECRET_KEY
+```
+
+The mapping is stored in `~/.config/mxkey/index` so `mxkey run api.openai --
+<cmd>` knows to set `$OPENAI_API_KEY=<value>` for the child process.
+
+## Validation
+
+Names must:
+
+- Be non-empty
+- Contain no whitespace or control characters
+
+That's it. Otherwise the namespace is whatever you make of it.
+
+## Backup codes
+
+`backup.<service>.<n>` is reserved for [`mxkey backup`](/docs/backup). The
+`<service>` must be a single word with no dots, and `<n>` is the
+auto-incremented code index. The env var is auto-generated as
+`<SERVICE_UPPER>_BACKUP_<N>`.

@@ -1,0 +1,45 @@
+---
+title: list
+description: Show stored secret names. Values are never printed.
+---
+
+```text
+mxkey list [prefix]
+```
+
+Prints two columns: `NAME` and `ENV_VAR`. Filtered by group prefix if given.
+
+## Example
+
+```bash
+mxkey list
+# NAME                                      ENV_VAR
+# ----------------------------------------  ------------------------------
+# api.openai                                OPENAI_API_KEY
+# api.stripe                                STRIPE_SECRET_KEY
+# project.myapp.database_url                DATABASE_URL
+# project.myapp.openai_api_key              OPENAI_API_KEY
+```
+
+## Filtering
+
+```bash
+mxkey list project.myapp
+# project.myapp.database_url   DATABASE_URL
+# project.myapp.openai_api_key OPENAI_API_KEY
+```
+
+The filter matches the prefix exactly OR everything starting with `<prefix>.`,
+but **not** longer prefixes that share the start (`project.myapp` won't match
+`project.myappextras`).
+
+## Empty state
+
+```text
+(no secrets stored)
+```
+
+## See also
+
+- [`rm`](/docs/rm) — delete an entry
+- [`set`](/docs/set) — add a new one

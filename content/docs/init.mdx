@@ -1,0 +1,59 @@
+---
+title: init
+description: Write a .env.mxkey manifest listing every secret matching a group prefix.
+---
+
+```text
+mxkey init <group-prefix>
+```
+
+Generates a `.env.mxkey` file in the current folder containing every secret
+name that matches `<group-prefix>` exactly OR starts with `<group-prefix>.`.
+
+The manifest holds **names only** — no values. Safe to commit to git.
+
+## Example
+
+```bash
+cd ~/projects/myapp
+mxkey init project.myapp
+# wrote .env.mxkey with 3 name(s):
+#   project.myapp.stripe_secret_key
+#   project.myapp.database_url
+#   project.myapp.openai_api_key
+```
+
+The resulting `.env.mxkey`:
+
+```text
+# mxkey manifest for project.myapp
+# Run: mxkey run-here -- <command>
+# Regenerate any time with: mxkey init project.myapp
+
+project.myapp.stripe_secret_key
+project.myapp.database_url
+project.myapp.openai_api_key
+```
+
+## Why a manifest
+
+Three reasons:
+
+1. **Discoverable** — `cat .env.mxkey` tells anyone on the project which
+   secrets it needs.
+2. **Subdirectory-friendly** — [`run-here`](/docs/run-here) walks up from any
+   subfolder to find this file.
+3. **Source-of-truth checkable** — your build / CI can compare `mxkey list
+   project.myapp` against the manifest to catch drift.
+
+## Overwriting
+
+If `.env.mxkey` already exists, `mxkey init` prompts to overwrite. Pass
+through `mxkey migrate` and a manifest is written automatically the first
+time (no overwrite of existing manifests).
+
+## See also
+
+- [`run-here`](/docs/run-here)
+- [`migrate`](/docs/migrate) — auto-writes a manifest after migrating
+- [Project groups](/docs/groups)

@@ -1,0 +1,71 @@
+---
+title: Project groups
+description: Use a shared name prefix to address multiple secrets as a unit.
+---
+
+mxkey has **no actual project object** — projects are a naming convention,
+not a data structure. What ties a "project" together is just a shared prefix
+like `project.myapp.*`.
+
+The CLI knows how to operate on prefixes:
+
+| Command | Behaviour with a prefix |
+| --- | --- |
+| [`mxkey list project.myapp`](/docs/list) | Filter to entries starting with `project.myapp.` |
+| [`mxkey run project.myapp -- cmd`](/docs/run) | Load every `project.myapp.*` secret into `cmd`'s env |
+| [`mxkey init project.myapp`](/docs/init) | Write `.env.mxkey` listing all matching names |
+
+## Example
+
+After [`mxkey migrate .env.local myapp`](/docs/migrate):
+
+```bash
+$ mxkey list project.myapp
+project.myapp.database_url           DATABASE_URL
+project.myapp.openai_api_key         OPENAI_API_KEY
+project.myapp.resend_api_key         RESEND_API_KEY
+project.myapp.stripe_secret_key      STRIPE_SECRET_KEY
+```
+
+Now run them as a group:
+
+```bash
+$ mxkey run project.myapp -- pnpm dev
+# all 4 secrets loaded as env vars
+```
+
+Or pin to the folder via the manifest:
+
+```bash
+$ mxkey init project.myapp
+# wrote .env.mxkey with 4 name(s)
+
+$ cd services/api
+$ mxkey run-here -- pnpm dev
+# walks up to find .env.mxkey, loads all 4
+```
+
+## Prefix matching
+
+A prefix matches:
+
+- The exact name (`project.myapp` itself, if such an entry exists), OR
+- Anything starting with `<prefix>.`
+
+So `project.myapp` matches `project.myapp` AND `project.myapp.stripe`,
+but **not** `project.myappextras.foo`.
+
+## When to use which
+
+| Scenario | Use |
+| --- | --- |
+| One-off curl with a single secret | `mxkey run api.openai -- curl ...` |
+| Run a project's full env from any subfolder | `mxkey run-here -- <cmd>` (after `mxkey init`) |
+| Run a project's full env from a fixed location | `mxkey run project.myapp -- <cmd>` |
+| Inspect what a project has | `mxkey list project.myapp` |
+
+## See also
+
+- [`init`](/docs/init)
+- [`run-here`](/docs/run-here)
+- [`migrate`](/docs/migrate) — creates the group + manifest in one step

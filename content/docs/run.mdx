@@ -1,0 +1,66 @@
+---
+title: run
+description: Run any command with named secrets injected as environment variables.
+---
+
+```text
+mxkey run <name>... -- <command>
+```
+
+Reads the named secrets from Keychain, then `exec`s the target command with
+each loaded as an environment variable. The value lives only in the child
+process's environment — never in shell history or process argv.
+
+## Example
+
+```bash
+mxkey run api.openai -- curl https://api.openai.com/v1/models
+```
+
+## Multiple secrets
+
+Pass several names; all are loaded:
+
+```bash
+mxkey run api.openai api.stripe db.prod-postgres -- ./run-job
+```
+
+## Group prefixes
+
+A name with **no exact match** is treated as a group prefix and expanded to
+every entry that starts with `<prefix>.`:
+
+```bash
+mxkey list project.myapp
+# project.myapp.stripe_secret_key
+# project.myapp.database_url
+# project.myapp.openai_api_key
+
+mxkey run project.myapp -- pnpm dev    # all 3 loaded
+```
+
+See [Project groups](/docs/groups).
+
+## How it injects safely
+
+```bash
+exec /usr/bin/env "OPENAI_API_KEY=$value" curl ...
+```
+
+`exec` replaces mxkey's own process with the target command. The secret only
+lives in `env`'s argv momentarily before `exec` swaps in the child — see
+[Keychain deep-dive: argv window](/docs/keychain-deep-dive#argv-window) for
+the honest threat-model breakdown.
+
+## Errors
+
+| Error | Cause |
+| --- | --- |
+| `error: <name> not in index and no entries match <name>.*` | Typo, or the secret was never saved. Run `mxkey list`. |
+| `error: <service> not found in keychain` | Index has the entry but Keychain doesn't (deleted manually, or via Keychain Access.app). Re-save with `mxkey set`. |
+
+## See also
+
+- [`run-here`](/docs/run-here) — run from anywhere in a project, using `.env.mxkey`
+- [`init`](/docs/init) — write the manifest that `run-here` reads
+- [Project groups](/docs/groups)

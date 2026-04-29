@@ -1,0 +1,31 @@
+{
+  "title": "mxkey",
+  "pages": [
+    "index",
+    "install",
+    "quickstart",
+    "---CLI---",
+    "cli-reference",
+    "set",
+    "run",
+    "list",
+    "rm",
+    "init",
+    "run-here",
+    "migrate",
+    "backup",
+    "get-export",
+    "---Concepts---",
+    "naming",
+    "groups",
+    "keychain-deep-dive",
+    "---Agent skill---",
+    "skill",
+    "triggers",
+    "playbooks",
+    "hard-rules",
+    "---Operations---",
+    "security",
+    "troubleshooting"
+  ]
+}

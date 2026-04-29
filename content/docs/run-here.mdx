@@ -1,0 +1,57 @@
+---
+title: run-here
+description: Walk up to the nearest .env.mxkey and run a command with every listed secret loaded.
+---
+
+```text
+mxkey run-here -- <command>
+mxkey here -- <command>     # alias
+```
+
+From any folder, walks up the directory tree to find the nearest
+`.env.mxkey`, parses the names listed there, and hands off to
+[`mxkey run`](/docs/run) with all of them.
+
+## Example
+
+Project structure:
+
+```text
+~/projects/myapp/
+├── .env.mxkey                # contains 3 names
+└── services/
+    └── api/
+        └── package.json      # cwd
+```
+
+```bash
+cd ~/projects/myapp/services/api
+mxkey run-here -- pnpm dev
+```
+
+Walks up: `services/api/` → `services/` → `myapp/` → finds `.env.mxkey`,
+loads the 3 secrets, runs `pnpm dev` with them in the env.
+
+## Manifest format
+
+Plain text. One name per line. `#` starts a comment. Blank lines ignored.
+
+```text
+# project.myapp manifest
+project.myapp.stripe_secret_key
+project.myapp.database_url
+project.myapp.openai_api_key
+```
+
+## Errors
+
+| Error | Cause |
+| --- | --- |
+| `error: no .env.mxkey found from <pwd> upwards` | No manifest exists in the current folder or any parent. Run `mxkey init <prefix>` to create one. |
+| `error: .env.mxkey is empty (no names)` | Manifest exists but has no name entries (only comments / blanks). |
+| `error: <name> not in index` | Manifest references a name that's no longer in mxkey. Re-run `mxkey init <prefix>` to regenerate. |
+
+## See also
+
+- [`init`](/docs/init) — write the manifest
+- [`migrate`](/docs/migrate) — auto-writes a manifest after migrating from `.env`

@@ -1,0 +1,95 @@
+---
+title: Agent playbooks
+description: The 7 procedures the agent runs through, grouped by trigger.
+---
+
+## Detecting `.env` files <span id="detect-env" />
+
+When the agent encounters a `.env`, `.env.local`, or similar:
+
+1. Offer to migrate: *"I see N keys in `.env.local`. Migrate them into Keychain under `project.<repo>.*`?"*
+2. On approval, runs `mxkey migrate <path-to-env> <repo>` (with `--delete` if you want the file gone in one step).
+3. Offers to add `.env*` to `.gitignore`.
+4. **Trims the migrated keys** out of the original `.env` if the user kept the file. (`mxkey migrate` itself prints the list of names to remove.)
+5. Suggests wrapping dev commands: `mxkey run-here -- pnpm dev`.
+
+**The agent doesn't migrate silently.** Some `.env` files are intentionally
+project-local (loaded by tooling that can't read parent-process env vars —
+e.g. Next.js's `.env.development` at build time). The agent always asks
+before touching the file.
+
+Full reference: [`mxkey migrate`](/docs/migrate).
+
+## Detecting `export KEY=` in shell rc files
+
+When reading or editing `~/.zshrc`, `~/.bashrc`, `~/.profile`, a
+`direnv` `.envrc`, etc., if the agent sees `export SOMETHING_API_KEY=...`:
+
+1. Flags it once: *"That `export` leaks into every process you spawn from this shell."*
+2. Offers to migrate: move the value into mxkey, remove the `export` line, wrap the consuming command in `mxkey run`.
+
+The agent only mentions this **once per session** — won't nag.
+
+## Detecting hardcoded secrets in code <span id="hardcoded" />
+
+When the agent sees a hardcoded-looking secret in source files —
+`Authorization: Bearer xyz`, `const API_KEY = "..."`, `apiKey: "sk-..."`:
+
+1. Warns **before** suggesting or writing a commit.
+2. Suggests the safe pattern:
+   ```bash
+   mxkey set api.foo FOO_API_KEY
+   ```
+   ```ts
+   // in code
+   const apiKey = process.env.FOO_API_KEY!
+   ```
+3. Offers to rewrite the file.
+
+## Rotating a secret <span id="rotating" />
+
+1. User generates a new key at the provider.
+2. The agent runs `mxkey set <name> <ENV_VAR>` again — overwrites the stored value (no confirmation; this is intentional).
+3. **Reminds the user to revoke the old key at the provider.** mxkey's own copy is fresh, but the old credential is still valid until you go to OpenAI / Stripe / wherever and explicitly revoke it.
+
+## Removing a secret
+
+1. Confirms with `mxkey list` which name to remove.
+2. Runs `mxkey rm <name>`.
+3. **Reminds the user the key is still valid at the provider.** `mxkey rm` only removes the local copy.
+
+## Storing 2FA backup / recovery codes <span id="backup-codes" />
+
+When the user mentions backup codes, recovery codes, one-time codes, or has
+just generated a list at a provider (GitHub, Google, Porkbun, 1Password,
+etc.):
+
+1. Suggests `mxkey backup add <service>` — service name is a single word, no dots.
+2. Default is hidden input. Mentions `--show` if the user wants visible echo, with a warning that visible input lands in scrollback.
+3. Each code is stored as `backup.<service>.<n>` with require-auth (Touch ID on every read) — no opt-out.
+4. To consume one later: `mxkey backup use <service>` prints the next code and atomically deletes it.
+5. **Warns: never use `mxkey get` / `mxkey export` on a backup code** — that doesn't delete it, and you'll re-use a burned code on the next call.
+6. Reminds the user to regenerate at the provider when the count gets low.
+
+The agent confirms the service name first, and asks before adding to an
+existing `backup.<service>.*` group (new codes append; old codes stay).
+
+Full reference: [`mxkey backup`](/docs/backup).
+
+## Refusing a pasted secret
+
+If the user pastes something that looks like a secret into chat:
+
+1. **Does not** act on it. **Does not** store it. **Does not** echo it back.
+2. Tells the user:
+
+   > *"That looks like a secret. Because it's now in this conversation,
+   > rotate it at the provider, then run `mxkey set <name> <ENV_VAR>` and
+   > type the new value at the hidden prompt — it won't enter the chat."*
+
+This is a hard rule, not a playbook decision — see [Hard rules](/docs/hard-rules).
+
+## See also
+
+- [Triggers](/docs/triggers) — when each playbook fires
+- [Hard rules](/docs/hard-rules) — what the agent never does

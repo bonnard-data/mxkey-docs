@@ -1,0 +1,108 @@
+---
+title: Security model
+description: What mxkey protects against, what it doesn't, and the honest threat model.
+---
+
+mxkey wraps macOS Keychain. It doesn't invent crypto. The security model is
+inherited from Keychain plus a few specific design choices documented below.
+
+## What mxkey protects against
+
+| Surface | Protection |
+| --- | --- |
+| `.env` files committed to git | Values are in Keychain, not on disk |
+| Shell history | `mxkey set` reads via hidden prompt; `mxkey run` injects via `exec` |
+| Process argv (visible to `ps`) | Argv exposure is **brief** — see below |
+| Backup tools that scrape `~/projects/**` | Same — values are in `~/Library/Keychains/`, not the project tree |
+| Screen-shares / log capture / over-the-shoulder | Hidden prompts mean no value ever appears on the screen |
+| Compromised dev tools that read `.env` paths | They find nothing — your `.env` is empty / absent |
+| AI agents accidentally including secrets in chat | The skill explicitly refuses to handle pasted secrets |
+
+## What mxkey doesn't protect against
+
+### An attacker already running as your user
+
+Keychain entries are scoped to your user UID. Anything running as your
+user can also call `security find-generic-password` and read your
+secrets. If your machine is compromised at the user level, mxkey doesn't
+add a layer.
+
+### The brief argv window
+
+There is a millisecond-scale window where the secret appears in process
+argv to anything that can call `ps aww` as the same user:
+
+- `security add-generic-password -w <secret> ...` — macOS's `security`
+  CLI requires the password as a command-line argument; there's no
+  stdin-fed alternative for `add-generic-password`.
+- `/usr/bin/env KEY=<secret> <cmd>` during `mxkey run` — `env` sets vars
+  from its own argv, then `exec`s the child. After the `exec` the secret
+  is in the child's env (not argv), but the `env` process itself briefly
+  had it on the command line.
+
+Both windows are short (exec happens immediately after argv parsing), but
+a same-UID attacker running `ps aww` in a tight loop could catch them. If
+you're modelling against a co-located attacker who's already running as
+your user, they can also read Keychain directly, so this isn't the
+weakest link — but it's worth being honest about.
+
+### Quantum cryptography or future Apple decryption flaws
+
+Keychain uses AES-256 + your login password. If macOS Keychain is
+broken at the cryptographic level, mxkey is too.
+
+## Touch ID on every read <span id="touch-id" />
+
+For high-value secrets, `mxkey set --require-auth <name>` stores the
+entry **without** the `-T /usr/bin/security` ACL flag. Every read then
+triggers a macOS confirmation dialog — Touch ID is a single tap on
+eligible Macs.
+
+Recommended for:
+
+- Production database credentials
+- Billing API keys (Stripe live, AWS prod, etc.)
+- Any credential where silent theft would hurt
+
+Backup codes (via [`mxkey backup`](/docs/backup)) **always** require auth
+— no opt-out.
+
+## Per-command scope
+
+`mxkey run` injects secrets only into the **specific process** that needs
+them. The value:
+
+1. Is read from Keychain into mxkey's memory
+2. Passed to `/usr/bin/env KEY=value cmd` via argv (the brief window)
+3. `exec`'d into the child — mxkey's process is replaced
+4. Exists in the child's environment for as long as the child runs
+5. Is released when the child exits
+
+No long-lived shell vars. No `.env` files. No leftovers.
+
+## Per-machine, per-user
+
+Single-user, single-machine. For team-shared secrets, use 1Password,
+Doppler, or a vault service.
+
+For multi-machine sync, iCloud Keychain replicates `mxkey.*` entries
+across signed-in Macs automatically — no manual config.
+
+## The on-disk index
+
+`~/.config/mxkey/index` is a tab-separated `name → ENV_VAR` file. It
+contains **no secret values**. It exists so `mxkey list` and `mxkey run`
+don't have to parse the massive `security dump-keychain` output every
+time.
+
+It's still metadata leakage (it tells someone which APIs you use), so:
+
+- Never commit it
+- Don't include `~/.config/` in dotfile-sync repos without exclusions
+- File mode `600`, dir mode `700`, `umask 077` for anything mxkey writes
+
+## See also
+
+- [Hard rules](/docs/hard-rules) — what the agent never does
+- [Keychain deep-dive](/docs/keychain-deep-dive) — how the wrapper actually works
+- [Backup codes](/docs/backup) — single-use 2FA recovery codes

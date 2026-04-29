@@ -1,0 +1,49 @@
+---
+title: Activation triggers
+description: The 7 situations that fire the mxkey skill in Claude Code, Cursor, or Codex.
+---
+
+The skill activates whenever the agent encounters one of these situations:
+
+## 1. User mentions an API key, token, bearer, or password
+
+Phrases like "I have a new OpenAI key", "set up the Stripe API", "my
+GitHub token is...". The agent reads SKILL.md and decides on the
+appropriate playbook.
+
+## 2. User says "set up the X API"
+
+Anything that implies a new credential is about to be needed.
+
+## 3. User mentions 2FA backup / recovery codes
+
+"I just generated 8 codes from GitHub", "where should I put my Porkbun
+recovery codes". Triggers the [backup-codes playbook](/docs/playbooks#backup-codes).
+
+## 4. User is editing or about to edit a `.env` file
+
+`.env`, `.env.local`, `.env.development`, `.env.production`, etc. Triggers
+the [.env migration playbook](/docs/playbooks#detect-env).
+
+## 5. The agent is writing a command that needs an API key
+
+If the agent is constructing a `curl https://api.openai.com/...` it
+should wrap with `mxkey run` instead of using `export` or hardcoding.
+
+## 6. The agent sees a hardcoded-looking secret in source files
+
+`Authorization: Bearer xyz`, `const API_KEY = "sk-..."`, `apiKey: "..."`.
+Triggers the [hardcoded-secret playbook](/docs/playbooks#hardcoded).
+
+## 7. The user pastes something that looks like a secret into chat
+
+Anything matching common secret patterns: `sk-...` (OpenAI), `gsk_...` (Groq),
+JWT tokens (three base64 segments separated by dots), 30+ char tokens with
+high entropy. The agent **refuses** to act on it — see [Hard rules](/docs/hard-rules).
+
+## What the agent does next
+
+For each trigger, there's a corresponding [playbook](/docs/playbooks) — a
+short procedure the agent follows. The playbooks all end the same way:
+the value lives only in your terminal (not in chat) and is stored in
+Keychain.

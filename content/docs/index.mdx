@@ -1,0 +1,35 @@
+---
+title: Welcome
+description: A bash CLI that puts dev secrets in macOS Keychain — designed so your agent can use them without ever seeing the value.
+---
+
+`mxkey` is a single bash script that stores dev secrets (API keys, tokens,
+2FA recovery codes) in the macOS Keychain that ships with your Mac. Commands
+that need a secret get it injected as an environment variable; the value
+never touches `.env` files, shell history, or any chat conversation.
+
+## What's here
+
+- **[Install](/docs/install)** — install the CLI and (optionally) the agent skill
+- **[Quickstart](/docs/quickstart)** — save a secret, run a command with it, all in three lines
+- **[CLI reference](/docs/cli-reference)** — every subcommand with its flags
+- **[Concepts](/docs/naming)** — naming convention, project groups, how the Keychain wrapper actually works
+- **[Agent skill](/docs/skill)** — how Claude Code, Cursor, and Codex use mxkey on your behalf
+- **[Security](/docs/security)** — what mxkey protects against and what it doesn't
+- **[Troubleshooting](/docs/troubleshooting)** — common errors and fixes
+
+## At a glance
+
+```bash
+brew install mxkey                      # install
+mxkey set api.openai OPENAI_API_KEY     # save (hidden prompt)
+mxkey run api.openai -- curl https://api.openai.com/v1/models    # use
+```
+
+Single bash script. Wraps `/usr/bin/security`. Zero dependencies beyond what
+ships with macOS.
+
+<Cards>
+  <Card title="Source" href="https://github.com/bonnard-data/mxkey" />
+  <Card title="Releases" href="https://github.com/bonnard-data/mxkey/releases" />
+</Cards>

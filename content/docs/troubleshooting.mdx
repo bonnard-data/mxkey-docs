@@ -1,0 +1,119 @@
+---
+title: Troubleshooting
+description: Common errors and how to fix them.
+---
+
+## `mxkey: command not found`
+
+`~/.local/bin/` isn't on `PATH`, or the symlink wasn't created.
+
+```bash
+bash ~/.claude/skills/mxkey/install.sh
+```
+
+Or if you cloned to a different location, run `install.sh` from that path.
+Then restart your terminal or `source ~/.zshrc`.
+
+If the issue is `PATH`, add this to your shell rc:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## `error: <name> not in index (try: mxkey list)`
+
+The on-disk index at `~/.config/mxkey/index` doesn't have an entry for
+this name. Either:
+
+- You typed a wrong name → check `mxkey list` for the exact spelling.
+- The index was deleted/corrupted but Keychain still has the entry.
+
+To rebuild a missing index entry, re-run `mxkey set` with the original name
+and env var. The value is prompted fresh; alternatively pull the value
+yourself and pipe it in:
+
+```bash
+security find-generic-password -s mxkey.api.openai -w \
+  | mxkey set api.openai OPENAI_API_KEY
+```
+
+## `error: <service> not found in keychain`
+
+The opposite problem — the index has an entry but Keychain doesn't.
+Likely because the Keychain entry was deleted manually (via Keychain
+Access.app) or on another machine.
+
+Fix by re-setting:
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+```
+
+## Repeated macOS GUI prompts on every read
+
+When you run `mxkey run` (or `mxkey get`), macOS pops a "allow access?"
+dialog every single time. This means the Keychain entry's ACL doesn't
+include the `security` binary as an allowed caller.
+
+`mxkey set` uses the `-T /usr/bin/security` flag which should prevent
+this on new entries. If you're seeing prompts on old entries, re-save:
+
+```bash
+mxkey set <name> <ENV_VAR>
+```
+
+## "Always allow" button doesn't appear, or doesn't stick
+
+Sometimes the dialog only shows "Allow" and "Deny" — not "Always Allow".
+This is the default when `-T` wasn't set during creation. Delete and re-add:
+
+```bash
+security delete-generic-password -s mxkey.api.openai
+mxkey set api.openai OPENAI_API_KEY
+```
+
+## I want to see what's really in Keychain
+
+```bash
+# All mxkey entries
+security dump-keychain login.keychain-db | grep -A1 '"mxkey\.'
+
+# One specific entry's metadata (but not value)
+security find-generic-password -s mxkey.api.openai
+```
+
+## I accidentally committed `~/.config/mxkey/index`
+
+It doesn't contain values — only `name <TAB> env_var_name` pairs. Not a
+secret, but still a metadata leak (tells someone which APIs you use). To
+untrack without deleting:
+
+```bash
+git rm --cached ~/.config/mxkey/index
+echo 'mxkey-index' >> .gitignore
+git commit -m "untrack mxkey index"
+```
+
+(The index shouldn't be in a repo in the first place — it's in your home
+dir, not the project. But over-eager backup rsync configs or dotfile
+repos sometimes catch it.)
+
+## `mxkey set` hangs
+
+You probably piped something into it by accident and it's waiting for stdin.
+Ctrl-C, then re-run as a normal interactive call:
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+# (type value at hidden prompt)
+```
+
+## Migrating to a new Mac
+
+iCloud Keychain syncs `mxkey.*` generic-password entries across Macs
+signed into the same Apple ID with Keychain sync enabled. The on-disk
+index at `~/.config/mxkey/index` is copied by Migration Assistant. No
+extra work.
+
+If you're not using iCloud Keychain, you'll need to re-save each secret
+on the new machine.

@@ -1,0 +1,140 @@
+---
+title: migrate
+description: Move every key=value in a .env file into Keychain under a project.<slug> group.
+---
+
+```text
+mxkey migrate [--delete|--keep] [--no-init] <path-to-.env> [project-slug]
+```
+
+Reads a `.env` file, parses the key/value pairs, and saves each one into
+Keychain under `project.<slug>.<lowercased-key>`. Values are piped to
+[`mxkey set`](/docs/set) via stdin so they never touch disk, intermediate
+files, or shell history.
+
+By default, also writes a `.env.mxkey` manifest in the current folder so
+[`mxkey run-here`](/docs/run-here) works immediately.
+
+## Example
+
+```bash
+cd ~/projects/myapp
+mxkey migrate .env.local myapp
+```
+
+Output:
+
+```text
+Project slug: myapp
+Reading: .env.local
+
+Found 4 key(s):
+  STRIPE_SECRET_KEY  (33 chars)
+  DATABASE_URL  (46 chars)
+  OPENAI_API_KEY  (41 chars)
+  RESEND_API_KEY  (25 chars)
+
+Migrate all of these under project.myapp.* ? [y/N] y
+
+  set project.myapp.stripe_secret_key  (STRIPE_SECRET_KEY)
+  set project.myapp.database_url  (DATABASE_URL)
+  set project.myapp.openai_api_key  (OPENAI_API_KEY)
+  set project.myapp.resend_api_key  (RESEND_API_KEY)
+
+migrated 4 / 4 secrets. skipped: 0
+
+project.myapp now contains 4 secret(s). wrote .env.mxkey.
+
+Delete .env.local now? [y/N]
+```
+
+## Arguments
+
+| | |
+| --- | --- |
+| `<path-to-.env>` | Any `.env`-style file. Comments (`#`), blank lines, and `export ` prefixes are handled. |
+| `[project-slug]` | The slug used as the group prefix. Defaults to `$(basename "$PWD")`. |
+
+## Flags
+
+### `--delete`
+
+```bash
+mxkey migrate --delete .env.local myapp
+```
+
+Deletes the original `.env` after a successful migration. No prompt.
+
+### `--keep`
+
+Skips the delete prompt and leaves the file in place. Prints a list of keys
+to remove manually.
+
+### `--no-init`
+
+Skips writing the `.env.mxkey` manifest. The default behaviour is to write
+one (existing manifests are never overwritten).
+
+## What gets parsed
+
+| Line | Result |
+| --- | --- |
+| `KEY=value` | Migrated as `project.<slug>.key` (lowercased) |
+| `export KEY=value` | Same — `export ` prefix is stripped |
+| `KEY="quoted value"` | Surrounding `"..."` and `'...'` quotes stripped |
+| `KEY=$INTERPOLATED` | Stored literally — **not expanded** |
+| Comments (`#`) | Skipped |
+| Blank lines | Skipped |
+
+## Duplicates
+
+In-file duplicates collapse with **last value wins** (matching standard
+`.env` semantics). The summary reports the dedup count:
+
+```text
+Found 3 unique key(s) (2 in-file duplicate(s) collapsed; last value wins):
+```
+
+## Overwrites
+
+If a target name already exists in Keychain, mxkey flags it before you confirm:
+
+```text
+Found 4 key(s):
+  STRIPE_SECRET_KEY  (33 chars)
+  DATABASE_URL  (46 chars) [overwrites existing]
+  OPENAI_API_KEY  (41 chars)
+  RESEND_API_KEY  (25 chars)
+
+1 entry(s) already exist in Keychain and will be overwritten.
+```
+
+## After migration
+
+The migrate output ends with concrete next steps. Typically:
+
+```bash
+# wrote .env.mxkey, deleted .env.local
+mxkey run-here -- pnpm dev
+```
+
+If you kept the file, **trim the migrated keys out of `.env`** — leaving
+both copies means secrets still live in plaintext and the two stores can drift.
+
+## Edge cases
+
+- **Multiline values** (PEM keys, JSON credentials). The simple parser
+  doesn't handle `KEY="-----BEGIN ..."` spanning lines. Migrate manually:
+  ```bash
+  cat key.pem | mxkey set api.my-key MY_PEM
+  ```
+- **Interpolation**. `API_URL=https://${DOMAIN}/api` is stored literally.
+  If your code expects expanded values, expand before migrating.
+- **Already committed `.env`**. Once leaked to git, the secrets are leaked
+  forever. Rotate at the provider before trusting the new setup.
+
+## See also
+
+- [Migrating from `.env`](/docs/skill#detect-env) — agent flow
+- [`run-here`](/docs/run-here)
+- [`init`](/docs/init)

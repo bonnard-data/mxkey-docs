@@ -1,0 +1,76 @@
+---
+title: Agent skill
+description: The bundled SKILL.md teaches Claude Code, Cursor, and Codex to handle every secret operation safely on your behalf.
+---
+
+mxkey ships with a Claude Code / Cursor / Codex skill (`SKILL.md` plus the
+`references/` directory) that loads when present in your editor's skills
+directory. With the skill active, the agent recognises secret-related
+situations and runs mxkey for you — without ever seeing the value.
+
+## Install
+
+Drop the cloned repo into your editor's skills folder:
+
+```bash
+# Claude Code
+ln -sfn "$(pwd)" ~/.claude/skills/mxkey
+
+# Cursor (path may differ)
+ln -sfn "$(pwd)" ~/.cursor/skills/mxkey
+
+# Codex (check your editor's docs)
+```
+
+A symlink so `git pull` updates the skill in place.
+
+The agent also expects the `mxkey` CLI on `PATH`, so make sure
+[`bash install.sh`](/docs/install) has run.
+
+## What it does
+
+| Page | What |
+| --- | --- |
+| [Triggers](/docs/triggers) | The 7 situations that activate the skill |
+| [Playbooks](/docs/playbooks) | The 7 behaviours the agent runs through |
+| [Hard rules](/docs/hard-rules) | What the agent never does |
+
+## How the skill is structured
+
+The repo contains:
+
+```text
+mxkey/
+├── SKILL.md            ← the main skill instructions (160 lines)
+├── references/
+│   ├── setup.md
+│   ├── migrate-from-env.md
+│   ├── troubleshooting.md
+│   └── keychain-deep-dive.md
+└── mxkey               ← the CLI binary the skill calls
+```
+
+`SKILL.md` is YAML-frontmattered and Markdown-bodied. The agent reads it on
+session start; the `references/` files are loaded on demand when the
+relevant playbook fires.
+
+## Why a skill, not a server
+
+The skill is just text — it doesn't run code. The agent uses it as
+context-on-demand: when you mention an API key, Claude Code reads
+`SKILL.md`, sees the playbook for "user mentions an API key", and runs
+the corresponding `mxkey set`/`mxkey run` commands itself.
+
+There's nothing to authenticate, no daemon, no MCP server. The mxkey CLI
+is the only moving part — the skill is documentation that the agent reads.
+
+## Versioning
+
+The skill version (in `SKILL.md` frontmatter) is bumped alongside the CLI.
+Agents keep the symlinked version automatically when you `git pull`.
+
+## See also
+
+- [Install](/docs/install) — CLI install
+- [Hard rules](/docs/hard-rules) — what the agent will refuse to do
+- [GitHub: SKILL.md source](https://github.com/bonnard-data/mxkey/blob/main/SKILL.md)

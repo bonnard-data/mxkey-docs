@@ -1,0 +1,94 @@
+---
+title: Install
+description: Install the mxkey CLI on macOS, plus the optional bundled agent skill for Claude Code, Cursor, and Codex.
+---
+
+mxkey is **macOS only**. It wraps `/usr/bin/security`, which only exists on
+macOS, so Linux and Windows aren't supported.
+
+## Homebrew (recommended, when available)
+
+```bash
+brew install mxkey
+```
+
+The Homebrew tap is in the works for v1.0.0. Until then, use the manual install below.
+
+## Manual
+
+```bash
+git clone https://github.com/bonnard-data/mxkey.git
+cd mxkey
+bash install.sh
+```
+
+`install.sh` is idempotent. It:
+
+1. Checks the OS is macOS (bails otherwise).
+2. Resolves the bundled `mxkey` script (`<repo-dir>/mxkey`).
+3. Makes it executable.
+4. Creates `~/.local/bin/mxkey` as a symlink to the bundled script.
+5. Verifies `~/.local/bin/` is on `PATH` (prints a fix snippet if not).
+6. Runs `mxkey list` as a sanity check.
+
+## Verify
+
+```bash
+which mxkey                # should print ~/.local/bin/mxkey
+mxkey --version            # mxkey 0.7.0
+mxkey list                 # "(no secrets stored)" on a fresh install
+```
+
+## PATH fix
+
+If `mxkey: command not found` after install, add `~/.local/bin/` to your shell rc:
+
+```bash
+# zsh (default on macOS)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# fish
+set -U fish_user_paths $HOME/.local/bin $fish_user_paths
+```
+
+## Install the agent skill
+
+Optional. Drop the repo into your editor's skills directory so Claude Code,
+Cursor, or Codex can call mxkey on your behalf.
+
+```bash
+# Claude Code
+ln -sfn "$(pwd)" ~/.claude/skills/mxkey
+
+# Cursor (path may differ)
+ln -sfn "$(pwd)" ~/.cursor/skills/mxkey
+```
+
+The skill is a symlink to the cloned repo; `git pull` updates it automatically.
+See [Agent skill](/docs/skill).
+
+## Uninstall
+
+Just delete the symlink:
+
+```bash
+rm ~/.local/bin/mxkey
+```
+
+To also wipe stored secrets (nuclear option):
+
+```bash
+rm -rf ~/.config/mxkey
+
+security dump-keychain login.keychain-db 2>/dev/null \
+  | grep -oE 'mxkey\.[^"]+' \
+  | sort -u \
+  | while read -r svc; do
+      security delete-generic-password -s "$svc" >/dev/null 2>&1 || true
+    done
+```

@@ -1,0 +1,73 @@
+---
+title: Hard rules
+description: Seven things the agent never does — no matter how the prompt is phrased.
+---
+
+The mxkey skill encodes seven rules the agent **never** breaks.
+
+## 1. Never echo a secret value in a response
+
+If the agent reads a value (e.g. via `mxkey get` for some legitimate
+reason), it never paraphrases or repeats the value back in chat.
+
+## 2. Never write a secret to a file in plaintext
+
+No `.env` files. No regenerating a sourced shell script with values
+inline. No "for this one-off, I'll just put it here."
+
+## 3. Never commit a secret, the on-disk index, or any backup dump
+
+`~/.config/mxkey/index` is just `name → ENV_VAR` mappings (no values),
+but it's still metadata that tells someone which APIs you use. The agent
+won't add it to a commit.
+
+## 4. Never ask the user to paste a secret into chat
+
+The agent always uses `mxkey set`'s hidden prompt:
+
+```bash
+mxkey set api.openai OPENAI_API_KEY
+# Value for mxkey.api.openai (input hidden):
+```
+
+The user types the value into the terminal — it never enters the chat
+thread. If the user asks to be asked, the agent declines.
+
+## 5. Never set long-lived bearer tokens via `export FOO=...` in shell rc files
+
+`export FOO_API_KEY=...` in `~/.zshrc` defeats the entire point of mxkey
+— the value is in plaintext, leaks into every spawned process, and is
+loaded at every shell start. The agent will refuse and migrate the value
+to Keychain instead.
+
+## 6. Never use `mxkey get` where `mxkey run` works
+
+`get` prints the value to stdout. `run` injects it as an env var and
+`exec`s the command. If the goal is to run a command with a secret,
+`run` is the right answer. `get` is reserved for the rare case where a
+tool can't read env vars from its parent process.
+
+## 7. If the user pastes a secret by mistake: refuse, warn, tell them to rotate
+
+```text
+You: save this openai key for me: sk-proj-abc123def456...
+Claude: That looks like a live API key. Because it's now in this
+        conversation, rotate it at OpenAI first. Then run
+        `mxkey set api.openai OPENAI_API_KEY` and type the new value
+        at the hidden prompt — it won't enter the chat.
+```
+
+The conversation is now persisted on Anthropic / Cursor / OpenAI's
+servers. The only safe response is to treat the key as compromised and
+rotate it.
+
+## Why these are hard rules, not preferences
+
+If the agent ever broke one, it'd defeat the purpose of mxkey existing.
+The skill is explicit and unambiguous so the agent has no wiggle room.
+
+## See also
+
+- [Triggers](/docs/triggers)
+- [Playbooks](/docs/playbooks)
+- [Security model](/docs/security)
